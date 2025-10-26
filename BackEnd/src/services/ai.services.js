@@ -1,119 +1,75 @@
+// ai.services.js
+
 const dotenv = require('dotenv');
-// Load environment variables from the .env file immediately
-dotenv.config();
+dotenv.config(); 
 
 const { GoogleGenAI } = require("@google/genai");
 
-// The SDK automatically uses the GEMINI_API_KEY from process.env, 
-// which was loaded by dotenv.config()
-const ai = new GoogleGenAI({});
+const GOOGLE_GEMINI_KEY = process.env.GOOGLE_GEMINI_KEY;
 
-/**
- * Service function to generate AI content using the Gemini API.
- * This function handles the communication with the Google AI API.
- * * @param {string} prompt - The user's query passed from the controller.
- * @returns {Promise<string>} The generated text response.
- */
-async function generateAiContent(prompt) {
-    // Critical check for API key
-    if (!process.env.GOOGLE_GEMINI_KEY) {
-        // Throw an error if the key is missing, to be caught by the controller
-        throw new Error("FATAL: GEMINI_API_KEY environment variable is not set.");
+const ai = new GoogleGenAI({ apiKey: GOOGLE_GEMINI_KEY });
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function generateAiContent(code) {
+    const MAX_RETRIES = 4;
+    
+    if (!GOOGLE_GEMINI_KEY) { 
+        throw new Error("FATAL: GOOGLE_GEMINI_KEY environment variable is not set.");
     }
 
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash", // Using the fast and capable flash model
-            contents: prompt,
-            systemInstructions: `
-            
-            Here's a solid system instruction for your AI code reviewer:
-
-                AI System Instruction: Senior Code Reviewer (7+ Years of Experience)
-
-                Role & Responsibilities:
-
-                You are an expert code reviewer with 7+ years of development experience. Your role is to analyze, review, and improve code written by developers. You focus on:
-                	•	Code Quality :- Ensuring clean, maintainable, and well-structured code.
-                	•	Best Practices :- Suggesting industry-standard coding practices.
-                	•	Efficiency & Performance :- Identifying areas to optimize execution time and resource usage.
-                	•	Error Detection :- Spotting potential bugs, security risks, and logical flaws.
-                	•	Scalability :- Advising on how to make code adaptable for future growth.
-                	•	Readability & Maintainability :- Ensuring that the code is easy to understand and modify.
-
-                Guidelines for Review:
-                	1.	Provide Constructive Feedback :- Be detailed yet concise, explaining why changes are needed.
-                	2.	Suggest Code Improvements :- Offer refactored versions or alternative approaches when possible.
-                	3.	Detect & Fix Performance Bottlenecks :- Identify redundant operations or costly computations.
-                	4.	Ensure Security Compliance :- Look for common vulnerabilities (e.g., SQL injection, XSS, CSRF).
-                	5.	Promote Consistency :- Ensure uniform formatting, naming conventions, and style guide adherence.
-                	6.	Follow DRY (Don’t Repeat Yourself) & SOLID Principles :- Reduce code duplication and maintain modular design.
-                	7.	Identify Unnecessary Complexity :- Recommend simplifications when needed.
-                	8.	Verify Test Coverage :- Check if proper unit/integration tests exist and suggest improvements.
-                	9.	Ensure Proper Documentation :- Advise on adding meaningful comments and docstrings.
-                	10.	Encourage Modern Practices :- Suggest the latest frameworks, libraries, or patterns when beneficial.
-
-                Tone & Approach:
-                	•	Be precise, to the point, and avoid unnecessary fluff.
-                	•	Provide real-world examples when explaining concepts.
-                	•	Assume that the developer is competent but always offer room for improvement.
-                	•	Balance strictness with encouragement :- highlight strengths while pointing out weaknesses.
-
-                Output Example:
-
-                ❌ Bad Code:
-                \`\`\`javascript
-                                function fetchData() {
-                    let data = fetch('/api/data').then(response => response.json());
-                    return data;
-                }
-
-                    \`\`\`
-
-                🔍 Issues:
-                	•	❌ fetch() is asynchronous, but the function doesn’t handle promises correctly.
-                	•	❌ Missing error handling for failed API calls.
-
-                ✅ Recommended Fix:
-
-                        \`\`\`javascript
-                async function fetchData() {
-                    try {
-                        const response = await fetch('/api/data');
-                        if (!response.ok) throw new Error("HTTP error! Status: $\{response.status}");
-                        return await response.json();
-                    } catch (error) {
-                        console.error("Failed to fetch data:", error);
-                        return null;
-                    }
-                }
-                   \`\`\`
-
-                💡 Improvements:
-                	•	✔ Handles async correctly using async/await.
-                	•	✔ Error handling added to manage failed requests.
-                	•	✔ Returns null instead of breaking execution.
-
-                Final Note:
-
-                Your mission is to ensure every piece of code follows high standards. Your reviews should empower developers to write better, more efficient, and scalable code while keeping performance, security, and maintainability in mind.
-
-                Would you like any adjustments based on your specific needs? 🚀 
-            
-            `
-        });
-
-        // Return just the text content to the controller
-        return response.text;
-    } catch (error) {
-        // Log the detailed error
-        console.error("Gemini API call failed:", error.message);
+    const codeReviewPrompt = `
+        You are an experienced Senior Code Reviewer. 
+        Analyze the following code for **quality, best practices, efficiency, readability, and security**.
         
-        // Rethrow a simplified error to be handled gracefully by the controller
-        throw new Error("AI Service failed to communicate with the model. Check network or API key permissions.");
+        Format your entire response using **Markdown** only, structured with these clear headings:
+        
+        ## 🚀 Summary of Review
+        A brief, encouraging summary.
+        
+        ## 🔍 Issues Found
+        Use bullet points to detail all issues (bugs, anti-patterns, security risks).
+        
+        ## ✅ Recommended Improvements
+        Provide concrete, refactored code examples where significant changes are needed, wrapped in code blocks (\`\`\`).
+        
+        ## 💡 Best Practices & Notes
+        Final tips and observations.
+
+        The code to review is:
+        
+        \`\`\`
+        ${code}
+        \`\`\`
+    `;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            // 🟢 FIX APPLIED HERE: Use ai.models.generateContent
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash", 
+                contents: codeReviewPrompt 
+            });
+            
+            if (!response.text) {
+                 throw new Error("The AI service returned an empty or blocked response.");
+            }
+
+            return response.text; 
+
+        } catch (error) {
+            console.error(`Attempt ${attempt} failed:`, error.message);
+
+            if (attempt === MAX_RETRIES) {
+                console.error("AI Service failed after 4 retries.");
+                throw new Error("AI Service failed after multiple retries. Check API key and network.");
+            }
+
+            const waitTime = Math.pow(2, attempt) * 1000;
+            console.log(`Retrying in ${waitTime / 1000} seconds...`);
+            await delay(waitTime);
+        }
     }
 }
 
-// Export the function directly as the module's export, allowing 
-// the controller to call it like: const response = await aiService(prompt);
 module.exports = generateAiContent;

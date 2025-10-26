@@ -14,7 +14,7 @@ module.exports.getReview = async (req, res) => {
         const responseText = await aiService(code); 
 
         // Send the response text back
-        res.json({ response: responseText });
+        res.json({ review: responseText });
 
     } catch (error) {
         console.error("Error in ai.controller.getResponse:", error.message);
