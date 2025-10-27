@@ -10,9 +10,9 @@ import './App.css'
 
 function App() {
   const [code, setCode] = useState(`Hello Iam an Ai Powered Code Reviewer,I can assist you with improvements in your code. In (JAVASCRIPT, PYTHON, JAVA, C++, C#). 
-    Replace this code with your own code and click on review button to get suggestions.
-    function sum() {
-    return 1+1;}`)
+  Replace this all with your own code and click on review button to get suggestions.
+  function sum() {
+  return 1+1;}`)
 
     const [review, setReview] = useState('')
 
