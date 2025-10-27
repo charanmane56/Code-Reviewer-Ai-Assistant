@@ -22,15 +22,13 @@ function App() {
    try {
         const response = await axios.post('http://localhost:3000/ai/get-review', { code });
         
-        // **FIX:** Access the specific property containing the string
-        // Assuming your backend returns { review: "..." }
         if (response.data && typeof response.data.review === 'string') {
             setReview(response.data.review);
         } else if (typeof response.data === 'string') {
-             // Fallback if the server sends a raw string (less common for APIs)
+
              setReview(response.data);
         } else {
-             // Handle cases where data is an object but doesn't have the expected property
+             
              console.error("Response data is not a string and does not contain a 'review' property.", response.data);
              setReview("Error: The server returned an unexpected data format.");
         }

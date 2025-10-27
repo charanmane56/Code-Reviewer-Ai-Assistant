@@ -45,7 +45,7 @@ async function generateAiContent(code) {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            // 🟢 FIX APPLIED HERE: Use ai.models.generateContent
+            
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash", 
                 contents: codeReviewPrompt 
